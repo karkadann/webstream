@@ -1,9 +1,11 @@
 # webstream
 
-La page hébergée de **screen-stream**, publiée par GitHub Pages : **https://karkadann.github.io/webstream/**.
+La page hébergée de **screen-stream** et de **web-android-auto**, publiée par GitHub Pages :
+**https://karkadann.github.io/webstream/**.
 
-Elle cherche l'app sur le réseau du navigateur (`3.3.3.1`, son hotspot), s'y relie par **WebRTC** (UDP/TCP
-3333), puis charge la page de l'app par ce lien — décodage matériel (WebCodecs) et GPS du navigateur, sans
+Elle cherche l'app sur le réseau du navigateur (`3.3.3.1:3333`, la même adresse et le même port pour les deux
+apps, jamais lancées en même temps), s'y relie par **WebRTC** (UDP ou TCP), puis charge la page de l'app qui a
+répondu par ce lien — décodage matériel (WebCodecs) et GPS du navigateur, sans
 certificat dans l'app. Pas de stream : une ligne « No stream », un nouvel essai toutes les 3 s. Une fois
 chargée, elle se recharge aussi sans internet (service worker).
 
@@ -16,5 +18,5 @@ au deuxième chargement, 10 min après le push.
 ## Réglages
 
 `site/config.js` : adresses où chercher l'app (`3.3.3.1`), port (3333), empreintes d'autres identités
-(vide en temps normal : l'empreinte de l'identité commune de l'app est dans `index.html`). Dans l'URL :
+(vide en temps normal : l'empreinte de l'identité commune des apps est dans `index.html`). Dans l'URL :
 `?a=ip[,ip]` remplace les adresses (atelier) ; `?diag=1`, `?d=broadway` passent à la page de l'app.
