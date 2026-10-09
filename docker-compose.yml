@@ -1,0 +1,12 @@
+# Nom de projet Compose → préfixe des réseaux/volumes.
+name: webstream
+
+services:
+  webstream:
+    # Image publiée sur Docker Hub — aucun build sur la machine cible.
+    # (Re)construire + publier depuis le repo : voir README « Publier l'image ».
+    image: karkadamn/webstream:latest
+    container_name: webstream
+    restart: unless-stopped
+    ports:
+      - "8095:80"

@@ -1,0 +1,5 @@
+# Le Dockerfile ne copie que docker/ et site/.
+.git
+.gitignore
+.env
+*.md

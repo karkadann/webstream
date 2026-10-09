@@ -1,0 +1,7 @@
+.env
+.env.*
+.DS_Store
+.idea/
+.vscode/
+.claude/settings.local.json
+docker-compose.override.yml
