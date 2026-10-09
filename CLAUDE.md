@@ -17,7 +17,9 @@ a une copie, `web-android-auto/webstream/`).
 
 ## Publier
 
-Un push sur `master`. GitHub garde les fichiers en cache 10 min.
+Un push sur `master`. Le service worker sert la page depuis son cache d'abord et la revalide en arrière-plan
+(`sw.js`, cache `webstream-5`) : une version publiée se voit à la deuxième ouverture. Changer la liste des
+fichiers ou leur traitement : changer aussi le nom du cache, pour purger l'ancien.
 
 ## ⛔ Contrats avec les apps
 

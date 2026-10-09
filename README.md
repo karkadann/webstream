@@ -11,9 +11,13 @@ chargée, elle se recharge aussi sans internet (service worker).
 
 ## Publier
 
-Un push sur `master` : `.github/workflows/pages.yml` publie `site/` sur Pages. GitHub garde les fichiers
-en cache 10 min, et le service worker sert sa copie avant la nouvelle : une mise à jour se voit au plus tard
-au deuxième chargement, 10 min après le push.
+Un push sur `master` : `.github/workflows/pages.yml` publie `site/` sur Pages. Le service worker sert la page
+**depuis son cache d'abord** (ouverture instantanée, même sur un réseau faible) et la revalide auprès de
+GitHub en arrière-plan : une nouvelle version se voit à la **deuxième** ouverture qui suit la publication.
+
+⚠️ Confidentialité : GitHub (et Fastly devant lui) voit chaque ouverture en ligne — adresse IP, heure, agent
+du navigateur —, ne serait-ce que par la revérification de `sw.js` que fait le navigateur lui-même. Le stream,
+lui, ne passe jamais par GitHub : WebRTC direct entre le navigateur et l'app, sans serveur STUN/TURN.
 
 ## Réglages
 
