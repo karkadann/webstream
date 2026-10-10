@@ -1,0 +1,116 @@
+<!doctype html>
+<!--
+  Page de diagnostic (hors stream) : qu'est-ce qui fait croire à la Tesla qu'une page est une « vidéo »
+  et affiche le bandeau « Vidéo bridée au son uniquement » ? On isole, du plus simple au complet :
+
+    ?case=none      un canvas animé, AUCUN WebRTC             (témoin : ne doit PAS déclencher)
+    ?case=pc        new RTCPeerConnection + un data channel, rien de plus (pas de connexion)
+    ?case=offer     + createOffer + setLocalDescription       (collecte ICE, jamais connecté)
+    ?case=loopback  deux RTCPeerConnection reliés EN BOUCLE, data channel ouvert, données en continu
+                    (une vraie session WebRTC établie, sans l'app — le cas le plus proche du stream)
+
+  À tester en PARKING : ouvrir chaque cas, noter si le bandeau Tesla apparaît. Le canvas est animé dans
+  tous les cas (le stream WebSocket animait déjà un canvas sans déclencher le bandeau : l'animation seule
+  est donc hors de cause, le cas `none` le confirme).
+-->
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RTC test</title>
+  <style>
+    :root { color-scheme: light dark; }
+    html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; }
+    body { display: flex; flex-direction: column; background: #111; color: #eee; }
+    #bar { padding: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    a.btn { padding: 8px 12px; border-radius: 8px; background: #2563eb; color: #fff;
+      text-decoration: none; font-size: 15px; }
+    a.btn.on { background: #16a34a; }
+    #case { font-weight: 700; margin-left: 4px; }
+    #cv { flex: 1; width: 100%; display: block; background: #000; }
+    #log { max-height: 30vh; overflow: auto; padding: 6px 10px; font: 12px/1.4 monospace;
+      white-space: pre-wrap; background: #000; }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <a class="btn" href="?case=none">none</a>
+    <a class="btn" href="?case=pc">pc</a>
+    <a class="btn" href="?case=offer">offer</a>
+    <a class="btn" href="?case=loopback">loopback</a>
+    <span id="case"></span>
+  </div>
+  <canvas id="cv"></canvas>
+  <div id="log"></div>
+  <script>
+  (() => {
+    'use strict';
+    const kase = new URLSearchParams(location.search).get('case') || 'none';
+    const logEl = document.getElementById('log');
+    const log = (m) => { logEl.textContent += m + '\n'; logEl.scrollTop = logEl.scrollHeight; };
+    document.getElementById('case').textContent = 'case = ' + kase;
+    for (const a of document.querySelectorAll('a.btn'))
+      if (a.getAttribute('href') === '?case=' + kase) a.classList.add('on');
+
+    // Canvas animé (témoin : présent dans tous les cas).
+    const cv = document.getElementById('cv');
+    const ctx = cv.getContext('2d');
+    function resize() { cv.width = cv.clientWidth; cv.height = cv.clientHeight; }
+    resize(); addEventListener('resize', resize);
+    let t = 0;
+    (function draw() {
+      t += 2;
+      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
+      ctx.fillStyle = '#2563eb';
+      ctx.fillRect((t % Math.max(1, cv.width - 80)), cv.height / 2 - 40, 80, 80);
+      ctx.fillStyle = '#eee'; ctx.font = '20px system-ui';
+      ctx.fillText(kase + ' — canvas animé', 16, 32);
+      requestAnimationFrame(draw);
+    })();
+
+    log('case: ' + kase);
+    log('RTCPeerConnection: ' + (typeof RTCPeerConnection));
+
+    if (kase === 'none') { log('aucun WebRTC créé.'); return; }
+
+    try {
+      if (kase === 'pc') {
+        const pc = new RTCPeerConnection({ iceServers: [] });
+        pc.createDataChannel('ws');
+        log('RTCPeerConnection créé + data channel, aucune connexion.');
+        return;
+      }
+      if (kase === 'offer') {
+        const pc = new RTCPeerConnection({ iceServers: [] });
+        pc.createDataChannel('ws');
+        pc.onicegatheringstatechange = () => log('ice gathering: ' + pc.iceGatheringState);
+        pc.createOffer().then((o) => pc.setLocalDescription(o))
+          .then(() => log('offre posée (setLocalDescription), jamais connecté.'))
+          .catch((e) => log('offer err: ' + e));
+        return;
+      }
+      if (kase === 'loopback') {
+        // Deux pairs dans la même page, reliés l'un à l'autre : une session WebRTC établie, complète,
+        // avec un data channel ouvert et des données en continu — sans l'app.
+        const a = new RTCPeerConnection({ iceServers: [] });
+        const b = new RTCPeerConnection({ iceServers: [] });
+        a.onicecandidate = (e) => e.candidate && b.addIceCandidate(e.candidate);
+        b.onicecandidate = (e) => e.candidate && a.addIceCandidate(e.candidate);
+        a.onconnectionstatechange = () => log('a: ' + a.connectionState);
+        const dc = a.createDataChannel('ws');
+        dc.onopen = () => {
+          log('data channel OUVERT — envoi en continu.');
+          setInterval(() => { try { dc.send('x'.repeat(1000)); } catch (e) {} }, 40);
+        };
+        b.ondatachannel = (e) => { e.channel.onmessage = () => {}; };
+        a.createOffer().then((o) => a.setLocalDescription(o).then(() => b.setRemoteDescription(o)))
+          .then(() => b.createAnswer()).then((ans) => b.setLocalDescription(ans).then(() => a.setRemoteDescription(ans)))
+          .then(() => log('offre/réponse échangées en boucle.'))
+          .catch((e) => log('loopback err: ' + e));
+        return;
+      }
+    } catch (e) { log('ERREUR: ' + e); }
+  })();
+  </script>
+</body>
+</html>
