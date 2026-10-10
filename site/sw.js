@@ -3,7 +3,7 @@
 // réseau faible (le réseau d'abord y faisait attendre jusqu'à 3 s), puis ses fichiers sont redemandés
 // en arrière-plan pour l'ouverture suivante — une version publiée se voit donc une ouverture plus tard.
 // ⚠️ Ne cache rien à GitHub : le navigateur revérifie de lui-même ce fichier à chaque ouverture en ligne.
-const CACHE = 'webstream-5';
+const CACHE = 'webstream-6';
 const FILES = ['./', 'index.html', 'config.js', 'favicon.svg'];
 
 self.addEventListener('install', (e) => {
@@ -18,9 +18,12 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
-  // La page, quels que soient ses paramètres (?diag=1, ?a=…), est rangée sous './'.
-  const key = req.mode === 'navigate' ? './' : req.url.split('?')[0];
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== location.origin) return;
+  // ⛔ Clé = le CHEMIN de la requête (requête ignorée), donc chaque page garde son identité : une
+  // ouverture de rtctest.html n'est plus servie à la place par index.html (bug de webstream-5, qui
+  // ramenait toute navigation à './').
+  const key = url.pathname;
   e.respondWith(caches.open(CACHE).then(async (c) => {
     // `no-cache` : revalidée auprès de GitHub (ETag), pas reprise des 10 min de son cache HTTP.
     const fresh = fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then((r) => {
